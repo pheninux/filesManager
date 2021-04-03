@@ -11,10 +11,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
+
+var slash string
 
 type parametres struct {
 	DirIn  string   `json:"dir_in"`
@@ -30,6 +33,12 @@ func checkErr(err error) {
 }
 
 func main() {
+
+	if runtime.GOOS == "windows" {
+		slash = "\\"
+	} else {
+		slash = "//"
+	}
 
 	param := parametres{}
 	http.HandleFunc("/action", http.HandlerFunc(action))
@@ -95,6 +104,7 @@ func action(w http.ResponseWriter, r *http.Request) {
 
 		time.Sleep(time.Second * 7000)
 		data, err := ioutil.ReadAll(r.Body)
+		checkErr(err)
 		s := struct {
 			DirIn  string   `json:"dir_in"`
 			DirOut string   `json:"dir_out"`
@@ -103,7 +113,6 @@ func action(w http.ResponseWriter, r *http.Request) {
 		}{}
 		param := parametres(s)
 		checkErr(json.Unmarshal(data, &param))
-		checkErr(err)
 		startProcessing(&param)
 		fmt.Println(param)
 		w.Write([]byte("data sent"))
@@ -132,8 +141,9 @@ func checkExtAndCopy(entry os.FileInfo, param *parametres, wgp *sync.WaitGroup) 
 	var wgc sync.WaitGroup
 	for _, ext := range param.Exts {
 		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
-			src := param.DirIn + "\\" + entry.Name()                      // create a source path
-			dest := param.DirOut + "\\" + ext + "-files\\" + entry.Name() // create a distination path
+
+			src := param.DirIn + slash + entry.Name()                            // create a source path
+			dest := param.DirOut + slash + ext + "-files" + slash + entry.Name() // create a distination path
 			wgc.Add(1)
 			go copyOrMove(src, dest, param.Action, &wgc)
 		}
@@ -170,7 +180,7 @@ func copyOrMove(src, dst, action string, wgc *sync.WaitGroup) {
 func makeOutDirs(exts []string, dirOut string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for _, v := range exts {
-		os.Mkdir(dirOut+"\\"+v+"-files", 0755)
+		os.Mkdir(dirOut+slash+v+"-files", 0755)
 	}
 }
 
