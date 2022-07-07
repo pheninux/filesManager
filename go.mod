@@ -1,4 +1,4 @@
-module fileManager
+module fileManager2
 
 go 1.14
 
