@@ -10,7 +10,7 @@ type Utils struct {
 	Slash string
 }
 
-func (u *Utils) ValidateArgs(p *models.File) error {
+func (u *Utils) ValidateArgs(p *models.DataTemplate) error {
 
 	//var regex = "[a-zA-Z]:\\\\(((?![<>:\"/\\\\|?*]).)+((?<![ .])\\\\)?)*$"
 	////var regex = "^[a-zA-Z]:\\\\(((?![<>:\"/\\\\|?*]).)+((?<![ .])\\\\)?)*$"

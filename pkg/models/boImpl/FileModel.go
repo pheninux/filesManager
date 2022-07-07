@@ -17,7 +17,7 @@ type FileModel struct {
 	*common.Utils
 }
 
-func (fm *FileModel) StartProcessing(param *models.File) {
+func (fm *FileModel) StartProcessing(param *models.DataTemplate) {
 
 	if err := fm.ValidateArgs(param); err != nil {
 		fmt.Println(err)
@@ -36,7 +36,7 @@ func (fm *FileModel) StartProcessing(param *models.File) {
 
 }
 
-func (fm *FileModel) Process(fi []os.FileInfo, param *models.File, wg *sync.WaitGroup) {
+func (fm *FileModel) Process(fi []os.FileInfo, param *models.DataTemplate, wg *sync.WaitGroup) {
 	var wgp sync.WaitGroup
 	defer wg.Done()
 
@@ -52,7 +52,7 @@ func (fm *FileModel) Process(fi []os.FileInfo, param *models.File, wg *sync.Wait
 }
 
 /** check every extentions and copy file in the appropriate folder**/
-func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, param *models.File, wgp *sync.WaitGroup) {
+func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, param *models.DataTemplate, wgp *sync.WaitGroup) {
 	defer wgp.Done()
 	var wgc sync.WaitGroup
 	for _, ext := range param.Exts {

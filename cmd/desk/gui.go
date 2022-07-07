@@ -1,11 +1,22 @@
 package main
 
 import (
+	"fileManager2/pkg/models"
 	"github.com/andlabs/ui"
 	"os"
+	"strings"
 )
 
 var extentions []string = []string{"pdf", "zip", "xls", "doc", "png", "jpeg", "exe"}
+
+type FormGui struct {
+	inEntry       *ui.Entry
+	outEntry      *ui.Entry
+	otherExtEntry *ui.Entry
+	log           *ui.MultilineEntry
+	action        *ui.Combobox
+	submit        *ui.Button
+}
 
 func startGui(da DeskApplication) {
 
@@ -34,10 +45,14 @@ func startGui(da DeskApplication) {
 
 func makeUiForm(da DeskApplication) ui.Control {
 
-	btn := ui.NewButton("Go")
-	btn.OnClicked(func(button *ui.Button) {
-		da.fileManager.StartProcessing(&da.file)
-	})
+	frm := FormGui{
+		inEntry:       ui.NewEntry(),
+		outEntry:      ui.NewEntry(),
+		otherExtEntry: ui.NewEntry(),
+		log:           ui.NewMultilineEntry(),
+		action:        actionCombo(),
+		submit:        ui.NewButton("GO"),
+	}
 
 	vbox := ui.NewVerticalBox()
 	vbox.SetPadded(true)
@@ -45,19 +60,46 @@ func makeUiForm(da DeskApplication) ui.Control {
 	grp.SetMargined(true)
 	uiForm := ui.NewForm()
 	uiForm.SetPadded(true)
-	uiForm.Append("Répertoire d'entrée", ui.NewEntry(), false)
-	uiForm.Append("Répertoire de sortie", ui.NewEntry(), false)
-	cmbAction := ui.NewCombobox()
-	cmbAction.Append("copy")
-	cmbAction.Append("move")
-	uiForm.Append("Action", cmbAction, false)
+	uiForm.Append("Répertoire d'entrée", frm.inEntry, false)
+	uiForm.Append("Répertoire de sortie", frm.outEntry, false)
+
+	uiForm.Append("Action", frm.action, false)
 	uiForm.Append("", makeExtentionsUi(), false)
-	uiForm.Append("Autres extentions", ui.NewEntry(), false)
-	uiForm.Append("Logs", ui.NewNonWrappingMultilineEntry(), false)
-	uiForm.Append("", btn, false)
+	uiForm.Append("Autres extentions", frm.otherExtEntry, false)
+	uiForm.Append("Logs", frm.log, false)
+	uiForm.Append("", frm.submit, false)
 	grp.SetChild(uiForm)
 	vbox.Append(grp, true)
+
+	frm.submit.OnClicked(func(button *ui.Button) {
+		da.fileManager.StartProcessing(wrapFormEntryValue(frm))
+	})
 	return vbox
+}
+
+func wrapFormEntryValue(frm FormGui) (dt *models.DataTemplate) {
+	dt = &models.DataTemplate{
+		DirIn:  frm.inEntry.Text(),
+		DirOut: frm.outEntry.Text(),
+		Action: parseSelectedCombo(frm.action),
+		Exts:   strings.SplitAfter(frm.otherExtEntry.Text(), ";"),
+	}
+	return dt
+}
+
+func parseSelectedCombo(cd *ui.Combobox) string {
+	if cd.Selected() == 0 {
+		return "Copy"
+	} else {
+		return "Move"
+	}
+}
+
+func actionCombo() (cmb *ui.Combobox) {
+	cmb = ui.NewCombobox()
+	cmb.Append("Copy")
+	cmb.Append("Move")
+	return cmb
 }
 
 func makeExtentionsUi() ui.Control {

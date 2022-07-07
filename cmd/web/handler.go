@@ -17,13 +17,7 @@ func (wa *WebApplication) Action(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(time.Second * 7000)
 		data, err := ioutil.ReadAll(r.Body)
 		wa.utils.CheckErr(err)
-		s := struct {
-			DirIn  string   `json:"dir_in"`
-			DirOut string   `json:"dir_out"`
-			Action string   `json:"action"`
-			Exts   []string `json:"exts"`
-		}{}
-		param := models.File(s)
+		param := models.DataTemplate{}
 		wa.utils.CheckErr(json.Unmarshal(data, &param))
 		wa.fileManager.StartProcessing(&param)
 		fmt.Println(param)

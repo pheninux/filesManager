@@ -1,6 +1,6 @@
 package models
 
-type File struct {
+type DataTemplate struct {
 	DirIn  string   `json:"dir_in"`
 	DirOut string   `json:"dir_out"`
 	Action string   `json:"action"`

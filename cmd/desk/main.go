@@ -2,7 +2,6 @@ package main
 
 import (
 	"fileManager2/cmd/common"
-	"fileManager2/pkg/models"
 	"fileManager2/pkg/models/boImpl"
 	"github.com/andlabs/ui"
 	_ "github.com/andlabs/ui/winmanifest"
@@ -13,12 +12,12 @@ var win *ui.Window
 
 type DeskApplication struct {
 	fileManager common.IFileManager
-	file        models.File
+	//dataTemplate *models.DataTemplate
 }
 
 func main() {
 
-	params := models.File{Action: "copy", DirOut: "C:\\Users\\a706836\\go\\src\\filesManager2", DirIn: "C:\\Users\\a706836\\Downloads", Exts: []string{"pdf"}}
+	//params := models.DataTemplate{Action: "copy", DirOut: "C:\\Users\\a706836\\go\\src\\filesManager2", DirIn: "C:\\Users\\a706836\\Downloads", Exts: []string{"pdf"}}
 	u := common.Utils{}
 	if runtime.GOOS == "windows" {
 		u.Slash = "\\"
@@ -26,7 +25,7 @@ func main() {
 		u.Slash = "//"
 	}
 
-	da := DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}, file: params}
+	da := DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}}
 
 	//currPath, err := os.Getwd() // get current path
 	//app.utils.CheckErr(err)
