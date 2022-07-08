@@ -2,12 +2,17 @@ package main
 
 import (
 	"fileManager2/pkg/models"
+	"fmt"
 	"github.com/andlabs/ui"
 	"os"
 	"strings"
 )
 
+var labelcount *ui.Label
+
 var extentions []string = []string{"pdf", "zip", "xls", "doc", "png", "jpeg", "exe"}
+var selectedExt map[string]struct{} = make(map[string]struct{})
+var keys []interface{}
 
 type FormGui struct {
 	inEntry       *ui.Entry
@@ -45,6 +50,8 @@ func startGui(da DeskApplication) {
 
 func makeUiForm(da DeskApplication) ui.Control {
 
+	labelcount = ui.NewLabel(fmt.Sprintf("%d", count))
+
 	frm := FormGui{
 		inEntry:       ui.NewEntry(),
 		outEntry:      ui.NewEntry(),
@@ -68,13 +75,28 @@ func makeUiForm(da DeskApplication) ui.Control {
 	uiForm.Append("Autres extentions", frm.otherExtEntry, false)
 	uiForm.Append("Logs", frm.log, false)
 	uiForm.Append("", frm.submit, false)
+	uiForm.Append("", labelcount, false)
 	grp.SetChild(uiForm)
 	vbox.Append(grp, true)
 
 	frm.submit.OnClicked(func(button *ui.Button) {
+
 		da.fileManager.StartProcessing(wrapFormEntryValue(frm))
 	})
+
+	frm.inEntry.OnChanged(func(entry *ui.Entry) {
+
+	})
 	return vbox
+}
+
+func extractMapkeys(m map[string]struct{}) []string {
+
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func wrapFormEntryValue(frm FormGui) (dt *models.DataTemplate) {
@@ -82,7 +104,7 @@ func wrapFormEntryValue(frm FormGui) (dt *models.DataTemplate) {
 		DirIn:  frm.inEntry.Text(),
 		DirOut: frm.outEntry.Text(),
 		Action: parseSelectedCombo(frm.action),
-		Exts:   strings.SplitAfter(frm.otherExtEntry.Text(), ";"),
+		Exts:   append(strings.Split(frm.otherExtEntry.Text(), ";"), extractMapkeys(selectedExt)...),
 	}
 	return dt
 }
@@ -109,6 +131,18 @@ func makeExtentionsUi() ui.Control {
 	hbox.SetPadded(true)
 	for _, v := range extentions {
 		checkB := ui.NewCheckbox(v)
+		checkB.OnToggled(func(checkbox *ui.Checkbox) {
+			_, ok := selectedExt[checkbox.Text()]
+			if !ok {
+				selectedExt[checkbox.Text()] = struct{}{}
+			} else {
+				delete(selectedExt, checkbox.Text())
+			}
+
+			fmt.Println(checkbox.Text())
+			fmt.Println(selectedExt)
+			fmt.Println(keys)
+		})
 		hbox.Append(checkB, true)
 	}
 	//vbox.Append(l,true)

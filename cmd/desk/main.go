@@ -3,12 +3,15 @@ package main
 import (
 	"fileManager2/cmd/common"
 	"fileManager2/pkg/models/boImpl"
+	"fmt"
 	"github.com/andlabs/ui"
 	_ "github.com/andlabs/ui/winmanifest"
 	"runtime"
+	"time"
 )
 
 var win *ui.Window
+var count int
 
 type DeskApplication struct {
 	fileManager common.IFileManager
@@ -17,6 +20,7 @@ type DeskApplication struct {
 
 func main() {
 
+	count = 0
 	//params := models.DataTemplate{Action: "copy", DirOut: "C:\\Users\\a706836\\go\\src\\filesManager2", DirIn: "C:\\Users\\a706836\\Downloads", Exts: []string{"pdf"}}
 	u := common.Utils{}
 	if runtime.GOOS == "windows" {
@@ -39,6 +43,19 @@ func main() {
 	//params.Exts = e
 
 	//da.fileManager.StartProcessing(&params) // start processing traitements
+	go counter()
 	startGui(da)
 
+}
+
+func counter() {
+	for {
+		time.Sleep(1 * time.Second)
+		count++
+
+		// Update the UI using the QueueMain function
+		ui.QueueMain(func() {
+			labelcount.SetText(fmt.Sprintf("%d", count))
+		})
+	}
 }
