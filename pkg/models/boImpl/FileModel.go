@@ -26,14 +26,38 @@ func (fm *FileModel) StartProcessing(param *models.DataTemplate) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go fm.MakeOutDirs(param.Exts, param.DirOut, &wg) // create directories for different extentions of files
 
 	fi, err := ioutil.ReadDir(param.DirIn) //read the content of dir files and folder
 	fm.CheckErr(err)
+	go fm.MakeOutDirs(param.Exts, param.DirOut, &wg) // create directories for different extentions of files
 	go fm.Process(fi, param, &wg)
 
-	wg.Wait()
+	for _, ext := range param.Exts {
+		path := param.DirOut + fm.Slash + ext + "-files"
+		empty, _ := IsEmpty(path)
+		if !empty {
+			os.Remove(path)
+		}
+	}
 
+	wg.Wait()
+}
+
+func IsEmpty(path string) (bool, error) {
+
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// OR f.Readdir(1)
+	_, err = f.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+
+	return false, err
 }
 
 func (fm *FileModel) Process(fi []os.FileInfo, param *models.DataTemplate, wg *sync.WaitGroup) {
@@ -57,7 +81,6 @@ func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, param *models.DataTempla
 	var wgc sync.WaitGroup
 	for _, ext := range param.Exts {
 		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
-
 			src := param.DirIn + fm.Slash + entry.Name()                               // create a source path
 			dest := param.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
 			wgc.Add(1)
@@ -90,7 +113,6 @@ func (fm *FileModel) CopyOrMove(src, dst, action string, wgc *sync.WaitGroup) {
 	case "move":
 		fm.CheckErr(os.Rename(src, dst))
 	}
-
 }
 
 func (fm *FileModel) MakeOutDirs(exts []string, dirOut string, wg *sync.WaitGroup) {

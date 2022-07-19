@@ -11,7 +11,7 @@ type Utils struct {
 }
 
 func (u *Utils) ValidateArgs(p *models.DataTemplate) error {
-
+	var err error
 	//var regex = "[a-zA-Z]:\\\\(((?![<>:\"/\\\\|?*]).)+((?<![ .])\\\\)?)*$"
 	////var regex = "^[a-zA-Z]:\\\\(((?![<>:\"/\\\\|?*]).)+((?<![ .])\\\\)?)*$"
 	//
@@ -28,15 +28,12 @@ func (u *Utils) ValidateArgs(p *models.DataTemplate) error {
 	//
 	//}
 
-	_, err := os.Stat(p.DirIn)
-	if err != nil {
-		return fmt.Errorf("failed to find the input directory, error: %w : %s", err, p.DirIn)
-	}
-	_, err = os.Stat(p.DirOut)
-	if err != nil {
-		return fmt.Errorf("failed to find the output directory, error: %w : %s", err, p.DirOut)
-	}
+	err = u.ValidateDir(p.DirOut, "output")
+	err = u.ValidateDir(p.DirIn, "input")
 
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -44,4 +41,12 @@ func (u *Utils) CheckErr(err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func (u *Utils) ValidateDir(dir, mode string) error {
+	_, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("failed to find the %s directory, error: %s", mode, dir)
+	}
+	return nil
 }

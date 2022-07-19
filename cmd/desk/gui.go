@@ -24,31 +24,28 @@ type FormGui struct {
 }
 
 func startGui(da DeskApplication) {
-
-	//run gui
 	ui.Main(func() {
 		win = ui.NewWindow("File manager", 400, 300, true)
+		win.SetBorderless(true)
 		win.SetMargined(true)
 		win.OnClosing(func(w *ui.Window) bool {
 			ui.Quit()
 			os.Exit(1)
 			return true
 		})
-
 		ui.OnShouldQuit(func() bool {
 			win.Destroy()
 			os.Exit(1)
 			return true
 		})
-		win.SetChild(makeUiForm(da))
+		win.SetChild(makeUiForm(da, win))
 		win.Show()
-
 	})
 }
 
 // code gui
 
-func makeUiForm(da DeskApplication) ui.Control {
+func makeUiForm(da DeskApplication, win *ui.Window) ui.Control {
 
 	labelcount = ui.NewLabel(fmt.Sprintf("%d", count))
 
@@ -60,7 +57,6 @@ func makeUiForm(da DeskApplication) ui.Control {
 		action:        actionCombo(),
 		submit:        ui.NewButton("GO"),
 	}
-
 	vbox := ui.NewVerticalBox()
 	vbox.SetPadded(true)
 	grp := ui.NewGroup("")
@@ -80,18 +76,31 @@ func makeUiForm(da DeskApplication) ui.Control {
 	vbox.Append(grp, true)
 
 	frm.submit.OnClicked(func(button *ui.Button) {
-
+		formValidate(da, win, frm)
 		da.fileManager.StartProcessing(wrapFormEntryValue(frm))
 	})
-
 	frm.inEntry.OnChanged(func(entry *ui.Entry) {
 
 	})
 	return vbox
 }
 
-func extractMapkeys(m map[string]struct{}) []string {
+func formValidate(da DeskApplication, w *ui.Window, frm FormGui) {
+	if frm.outEntry.Text() == "" || frm.inEntry.Text() == "" {
+		ui.MsgBoxError(w, "Repertoire d'entrée ou sortie est vide . assurez-vous de les renseigner", "")
+		return
+	}
+	if err := da.utils.ValidateDir(frm.inEntry.Text(), "input"); err != nil {
+		ui.MsgBoxError(w, err.Error(), "")
+		return
+	}
+	if err := da.utils.ValidateDir(frm.outEntry.Text(), "output"); err != nil {
+		ui.MsgBoxError(w, err.Error(), "")
+		return
+	}
+}
 
+func extractMapkeys(m map[string]struct{}) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -155,7 +164,6 @@ func hLabelEntry(e *ui.Entry, l string) (*ui.Entry, ui.Control) {
 	lab := ui.NewLabel(l)
 	hbox.Append(lab, true)
 	hbox.Append(e, true)
-
 	return e, hbox
 }
 
@@ -164,7 +172,6 @@ func vLabelEntry(e *ui.Entry, l string) (*ui.Entry, ui.Control) {
 	lab := ui.NewLabel(l)
 	vbox.Append(lab, true)
 	vbox.Append(e, true)
-
 	return e, vbox
 }
 
@@ -173,7 +180,6 @@ func hLabelCombo(e *ui.Combobox, l string) (*ui.Combobox, ui.Control) {
 	lab := ui.NewLabel(l)
 	hbox.Append(lab, true)
 	hbox.Append(e, true)
-
 	return e, hbox
 }
 
@@ -182,7 +188,6 @@ func vLabelCombo(e *ui.Combobox, l string) (*ui.Combobox, ui.Control) {
 	lab := ui.NewLabel(l)
 	vbox.Append(lab, true)
 	vbox.Append(e, true)
-
 	return e, vbox
 }
 
@@ -191,6 +196,5 @@ func vLabelMultiEntry(e *ui.MultilineEntry, l string) (*ui.MultilineEntry, ui.Co
 	lab := ui.NewLabel(l)
 	vbox.Append(lab, true)
 	vbox.Append(e, true)
-
 	return e, vbox
 }

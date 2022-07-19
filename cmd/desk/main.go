@@ -2,6 +2,7 @@ package main
 
 import (
 	"fileManager2/cmd/common"
+	"fileManager2/pkg/models"
 	"fileManager2/pkg/models/boImpl"
 	"fmt"
 	"github.com/andlabs/ui"
@@ -14,8 +15,9 @@ var win *ui.Window
 var count int
 
 type DeskApplication struct {
-	fileManager common.IFileManager
-	//dataTemplate *models.DataTemplate
+	fileManager  common.IFileManager
+	dataTemplate *models.DataTemplate
+	utils        common.Utils
 }
 
 func main() {
@@ -29,7 +31,7 @@ func main() {
 		u.Slash = "//"
 	}
 
-	da := DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}}
+	da := DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}, utils: common.Utils{}}
 
 	//currPath, err := os.Getwd() // get current path
 	//app.utils.CheckErr(err)
@@ -43,7 +45,7 @@ func main() {
 	//params.Exts = e
 
 	//da.fileManager.StartProcessing(&params) // start processing traitements
-	go counter()
+	//go counter()
 	startGui(da)
 
 }
