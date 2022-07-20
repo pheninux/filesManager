@@ -32,14 +32,6 @@ func (fm *FileModel) StartProcessing(param *models.DataTemplate) {
 	go fm.MakeOutDirs(param.Exts, param.DirOut, &wg) // create directories for different extentions of files
 	go fm.Process(fi, param, &wg)
 
-	for _, ext := range param.Exts {
-		path := param.DirOut + fm.Slash + ext + "-files"
-		empty, _ := IsEmpty(path)
-		if !empty {
-			os.Remove(path)
-		}
-	}
-
 	wg.Wait()
 }
 
@@ -84,15 +76,24 @@ func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, param *models.DataTempla
 			src := param.DirIn + fm.Slash + entry.Name()                               // create a source path
 			dest := param.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
 			wgc.Add(1)
-			go fm.CopyOrMove(src, dest, param.Action, &wgc)
+			go fm.CopyOrMove(src, dest, param, &wgc)
+		}
+	}
+	// delete the folder if is empty
+	for _, ext := range param.Exts {
+		path := param.DirOut + fm.Slash + ext + "-files"
+		empty, _ := IsEmpty(path)
+		if !empty {
+			os.Remove(path)
 		}
 	}
 	wgc.Wait()
+
 }
 
-func (fm *FileModel) CopyOrMove(src, dst, action string, wgc *sync.WaitGroup) {
+func (fm *FileModel) CopyOrMove(src, dst string, param *models.DataTemplate, wgc *sync.WaitGroup) {
 	defer wgc.Done()
-	switch strings.ToLower(action) {
+	switch strings.ToLower(param.Action) {
 	case "copy":
 		src_file, err := os.Open(src)
 		fm.CheckErr(err)
@@ -112,6 +113,15 @@ func (fm *FileModel) CopyOrMove(src, dst, action string, wgc *sync.WaitGroup) {
 		fm.CheckErr(err)
 	case "move":
 		fm.CheckErr(os.Rename(src, dst))
+	}
+
+	// delete the folder if is empty
+	for _, ext := range param.Exts {
+		path := param.DirOut + fm.Slash + ext + "-files"
+		empty, _ := IsEmpty(path)
+		if !empty {
+			os.Remove(path)
+		}
 	}
 }
 

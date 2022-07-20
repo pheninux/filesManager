@@ -7,7 +7,7 @@ import (
 )
 
 type IFileManager interface {
-	CopyOrMove(src, dst, action string, wgc *sync.WaitGroup)
+	CopyOrMove(src, dst string, param *models.DataTemplate, wgc *sync.WaitGroup)
 	CheckExtAndCopy(entry os.FileInfo, param *models.DataTemplate, wgp *sync.WaitGroup)
 	StartProcessing(param *models.DataTemplate)
 	Process(fi []os.FileInfo, param *models.DataTemplate, wg *sync.WaitGroup)
