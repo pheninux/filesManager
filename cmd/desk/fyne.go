@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
 	"strings"
+	"time"
 )
 
 type FyneGui struct {
@@ -99,12 +102,29 @@ func startGuiFyne(da DeskApplication) {
 	btnCancel := widget.NewButton("Quit", func() {})
 	btnGo := widget.NewButton("Go", func() {
 
+		// write logs
+		go func() {
+			for i := 1; i < 100; i++ {
+				f.log.Text += canvas.NewText("\n coucou", color.NRGBA{R: 255, G: 0, B: 0, A: 255}).Text
+				f.log.Refresh()
+				time.Sleep(time.Second * 3)
+			}
+		}()
+
+		// when press de button "go" first we collect de selected exts
 		selectedExts = []string{}
 		for _, cb := range cbs {
 			if cb.Checked {
 				selectedExts = append(selectedExts, cb.Text)
 			}
 		}
+
+		// check validate form entry
+		if !validateFyneEntry(f, w) {
+			return
+		}
+
+		// start processing
 		da.fileManager.StartProcessing(wrapFyneFormEntry(f))
 	})
 
@@ -151,6 +171,7 @@ func removeFromSlice(s []string, r string) []string {
 	return s
 }
 
+// wrap data from from  fyne entry to the templateData model
 func wrapFyneFormEntry(frm FyneGui) (dt *models.DataTemplate) {
 
 	dt = &models.DataTemplate{
@@ -163,10 +184,12 @@ func wrapFyneFormEntry(frm FyneGui) (dt *models.DataTemplate) {
 	return dt
 }
 
+// parse the selected option in combo widget
 func parseFyneSelectedCombo(cd *widget.Select) string {
 	return cd.Selected
 }
 
+// manage and clean the slice of exts
 func manageExts(frm FyneGui) []string {
 	if frm.otherExts.Text == "" {
 		return selectedExts
@@ -174,6 +197,7 @@ func manageExts(frm FyneGui) []string {
 	return deleteEmptySliceValue(append(strings.Split(frm.otherExts.Text, ";"), selectedExts...))
 }
 
+// delete de empty value from slice
 func deleteEmptySliceValue(s []string) []string {
 	var r []string
 	for _, str := range s {
@@ -182,4 +206,31 @@ func deleteEmptySliceValue(s []string) []string {
 		}
 	}
 	return r
+}
+
+// function to validate the fyne form entry
+func validateFyneEntry(frm FyneGui, w fyne.Window) bool {
+	if frm.in.Text == "" {
+		d := dialog.NewInformation("Information", "Input directory is empty !", w)
+		d.Show()
+		w.Canvas().Focus(frm.in)
+		return false
+	} else if frm.out.Text == "" {
+		d := dialog.NewInformation("Information", "Output directory is empty !", w)
+		d.Show()
+		w.Canvas().Focus(frm.out)
+		return false
+	} else if frm.action.Selected == "" {
+		d := dialog.NewInformation("Information", "Please select the action to do", w)
+		d.Show()
+		w.Canvas().Focus(frm.action)
+		return false
+	} else if manageExts(frm) == nil || len(manageExts(frm)) == 0 {
+		d := dialog.NewInformation("Information", "Please select at less one extension", w)
+		d.Show()
+		w.Canvas().Focus(frm.otherExts)
+		return false
+	}
+
+	return true
 }

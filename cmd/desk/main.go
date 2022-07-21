@@ -48,9 +48,6 @@ func main() {
 	startGuiFyne(da)
 
 	// TODO REGLER LE SOUCIE SI UN DOSSIER EST VIDE FAUT LE SUPPRIMER
-	// todo validate form with msgbox
-	// todo if no action is selected msgbox to prevent
-	// todo if no exts selected msgbox to prevent
 	// todo logs ( numbre file , taille file , ect ...)
 	// todo theming
 
