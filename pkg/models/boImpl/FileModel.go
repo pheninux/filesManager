@@ -17,9 +17,9 @@ type FileModel struct {
 	*common.Utils
 }
 
-func (fm *FileModel) StartProcessing(param *models.DataTemplate) {
+func (fm *FileModel) StartProcessing(dt *models.DataTemplate, cc chan int) {
 
-	if err := fm.ValidateArgs(param); err != nil {
+	if err := fm.ValidateArgs(dt); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -27,10 +27,10 @@ func (fm *FileModel) StartProcessing(param *models.DataTemplate) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	fi, err := ioutil.ReadDir(param.DirIn) //read the content of dir files and folder
+	fi, err := ioutil.ReadDir(dt.DirIn) //read the content of dir files and folder
 	fm.CheckErr(err)
-	go fm.MakeOutDirs(param.Exts, param.DirOut, &wg) // create directories for different extentions of files
-	go fm.Process(fi, param, &wg)
+	go fm.MakeOutDirs(dt.Exts, dt.DirOut, &wg) // create directories for different extentions of files
+	go fm.Process(fi, dt, &wg, cc)
 
 	wg.Wait()
 }
@@ -52,7 +52,7 @@ func IsEmpty(path string) (bool, error) {
 	return false, err
 }
 
-func (fm *FileModel) Process(fi []os.FileInfo, param *models.DataTemplate, wg *sync.WaitGroup) {
+func (fm *FileModel) Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync.WaitGroup, cc chan int) {
 	var wgp sync.WaitGroup
 	defer wg.Done()
 
@@ -61,34 +61,27 @@ func (fm *FileModel) Process(fi []os.FileInfo, param *models.DataTemplate, wg *s
 			continue
 		}
 		wgp.Add(1)
-		go fm.CheckExtAndCopy(entry, param, &wgp)
+		go fm.CheckExtAndCopy(entry, dt, &wgp, cc)
 		fmt.Println(" ", entry.Name(), entry.IsDir(), filepath.Ext(entry.Name()))
 	}
 	wgp.Wait()
 }
 
 /** check every extentions and copy file in the appropriate folder**/
-func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, param *models.DataTemplate, wgp *sync.WaitGroup) {
+func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, dt *models.DataTemplate, wgp *sync.WaitGroup, cc chan int) {
 	defer wgp.Done()
 	var wgc sync.WaitGroup
-	for _, ext := range param.Exts {
-		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
-			src := param.DirIn + fm.Slash + entry.Name()                               // create a source path
-			dest := param.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
-			wgc.Add(1)
-			go fm.CopyOrMove(src, dest, param, &wgc)
-		}
-	}
-	// delete the folder if is empty
-	for _, ext := range param.Exts {
-		path := param.DirOut + fm.Slash + ext + "-files"
-		empty, _ := IsEmpty(path)
-		if !empty {
-			os.Remove(path)
-		}
-	}
-	wgc.Wait()
+	// counter for nbr of file ara copied
 
+	for _, ext := range dt.Exts {
+		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
+			dt.Count++
+			src := dt.DirIn + fm.Slash + entry.Name()                               // create a source path
+			dest := dt.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
+			wgc.Add(1)
+			go fm.CopyOrMove(src, dest, dt, &wgc)
+		}
+	}
 }
 
 func (fm *FileModel) CopyOrMove(src, dst string, param *models.DataTemplate, wgc *sync.WaitGroup) {

@@ -5,4 +5,5 @@ type DataTemplate struct {
 	DirOut string   `json:"dir_out"`
 	Action string   `json:"action"`
 	Exts   []string `json:"exts"`
+	Count  int      `json:"ccount"`
 }

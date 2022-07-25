@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,10 +31,12 @@ var exts = []string{"pdf", "png", "txt", "jpeg", "csv", "doc", "docs"}
 var selectedExts []string
 var cbs []*widget.Check
 
-func startGuiFyne(da DeskApplication) {
+func startGuiFyne(da *DeskApplication, cc chan int) {
 	//func main() {
 
 	app := app.New()
+	// for setting new theme
+	//app.Settings().SetTheme(&myTheme{})
 	w := app.NewWindow("Files Manager")
 	//w.SetFixedSize(true)
 	w.CenterOnScreen()
@@ -99,13 +100,16 @@ func startGuiFyne(da DeskApplication) {
 	logs := widget.NewMultiLineEntry()
 
 	/******* ******************/
-	btnCancel := widget.NewButton("Quit", func() {})
+	btnCancel := widget.NewButton("Quit", func() {
+		app.Quit()
+	})
 	btnGo := widget.NewButton("Go", func() {
 
 		// write logs
 		go func() {
 			for i := 1; i < 100; i++ {
-				f.log.Text += canvas.NewText("\n coucou", color.NRGBA{R: 255, G: 0, B: 0, A: 255}).Text
+
+				f.log.Text += "\n " + strconv.Itoa(<-cc)
 				f.log.Refresh()
 				time.Sleep(time.Second * 3)
 			}
@@ -125,8 +129,9 @@ func startGuiFyne(da DeskApplication) {
 		}
 
 		// start processing
-		da.fileManager.StartProcessing(wrapFyneFormEntry(f))
+		da.fileManager.StartProcessing(wrapFyneFormEntry(f), cc)
 	})
+	btnGo.Importance = widget.HighImportance
 
 	f = FyneGui{
 		in:        inDir,

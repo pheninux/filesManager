@@ -7,9 +7,9 @@ import (
 )
 
 type IFileManager interface {
-	CopyOrMove(src, dst string, param *models.DataTemplate, wgc *sync.WaitGroup)
-	CheckExtAndCopy(entry os.FileInfo, param *models.DataTemplate, wgp *sync.WaitGroup)
-	StartProcessing(param *models.DataTemplate)
-	Process(fi []os.FileInfo, param *models.DataTemplate, wg *sync.WaitGroup)
+	CopyOrMove(src, dst string, dt *models.DataTemplate, wgc *sync.WaitGroup)
+	CheckExtAndCopy(entry os.FileInfo, dt *models.DataTemplate, wgp *sync.WaitGroup, cc chan int)
+	StartProcessing(dt *models.DataTemplate, cc chan int)
+	Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync.WaitGroup, cc chan int)
 	MakeOutDirs(exts []string, dirOut string, wg *sync.WaitGroup)
 }

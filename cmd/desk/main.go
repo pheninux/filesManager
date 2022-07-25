@@ -10,7 +10,6 @@ import (
 )
 
 var win *ui.Window
-var count int
 
 type DeskApplication struct {
 	fileManager  common.IFileManager
@@ -20,6 +19,7 @@ type DeskApplication struct {
 
 func main() {
 
+	ccount := make(chan int)
 	//count = 0
 	//params := models.DataTemplate{Action: "copy", DirOut: "C:\\Users\\a706836\\go\\src\\filesManager2", DirIn: "C:\\Users\\a706836\\Downloads", Exts: []string{"pdf"}}
 	u := common.Utils{}
@@ -29,7 +29,7 @@ func main() {
 		u.Slash = "//"
 	}
 
-	da := DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}, utils: common.Utils{}}
+	da := &DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}, utils: common.Utils{}}
 
 	//currPath, err := os.Getwd() // get current path
 	//app.utils.CheckErr(err)
@@ -45,10 +45,11 @@ func main() {
 	//da.fileManager.StartProcessing(&params) // start processing traitements
 	//go counter()
 	//startGui(da)
-	startGuiFyne(da)
+	startGuiFyne(da, ccount)
 
 	// TODO REGLER LE SOUCIE SI UN DOSSIER EST VIDE FAUT LE SUPPRIMER
 	// todo logs ( numbre file , taille file , ect ...)
 	// todo theming
+	// todo shwo error in msgbox when something turn wrong
 
 }

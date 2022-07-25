@@ -10,6 +10,7 @@ import (
 )
 
 func (wa *WebApplication) Action(w http.ResponseWriter, r *http.Request) {
+	ccount := make(chan int)
 	if r.Method == "GET" {
 		fmt.Println("the server is ok")
 	} else {
@@ -19,7 +20,7 @@ func (wa *WebApplication) Action(w http.ResponseWriter, r *http.Request) {
 		wa.utils.CheckErr(err)
 		param := models.DataTemplate{}
 		wa.utils.CheckErr(json.Unmarshal(data, &param))
-		wa.fileManager.StartProcessing(&param)
+		wa.fileManager.StartProcessing(&param, ccount)
 		fmt.Println(param)
 		w.Write([]byte("data sent"))
 	}
