@@ -17,22 +17,22 @@ type FileModel struct {
 	*common.Utils
 }
 
-func (fm *FileModel) StartProcessing(dt *models.DataTemplate, cc chan int) {
+func (fm *FileModel) StartProcessing(dt *models.DataTemplate, s chan *models.Stack) {
 
-	if err := fm.ValidateArgs(dt); err != nil {
-		fmt.Println(err)
-		return
+	fi, err := ioutil.ReadDir(dt.DirIn) //read the content of dir files and folder
+	if err != nil {
+		dt.Stack.Err = err.Error()
+		s <- dt.Stack
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	fi, err := ioutil.ReadDir(dt.DirIn) //read the content of dir files and folder
-	fm.CheckErr(err)
 	go fm.MakeOutDirs(dt.Exts, dt.DirOut, &wg) // create directories for different extentions of files
-	go fm.Process(fi, dt, &wg, cc)
+	go fm.Process(fi, dt, &wg, s)
 
 	wg.Wait()
+
 }
 
 func IsEmpty(path string) (bool, error) {
@@ -52,7 +52,7 @@ func IsEmpty(path string) (bool, error) {
 	return false, err
 }
 
-func (fm *FileModel) Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync.WaitGroup, cc chan int) {
+func (fm *FileModel) Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync.WaitGroup, s chan *models.Stack) {
 	var wgp sync.WaitGroup
 	defer wg.Done()
 
@@ -61,56 +61,89 @@ func (fm *FileModel) Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync
 			continue
 		}
 		wgp.Add(1)
-		go fm.CheckExtAndCopy(entry, dt, &wgp, cc)
-		fmt.Println(" ", entry.Name(), entry.IsDir(), filepath.Ext(entry.Name()))
+		go fm.CheckExtAndCopy(entry, dt, &wgp, s)
+		//fmt.Println(" ", entry.Name(), entry.IsDir(), filepath.Ext(entry.Name()))
 	}
 	wgp.Wait()
 }
 
 /** check every extentions and copy file in the appropriate folder**/
-func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, dt *models.DataTemplate, wgp *sync.WaitGroup, cc chan int) {
+func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, dt *models.DataTemplate, wgp *sync.WaitGroup, s chan *models.Stack) {
+
 	defer wgp.Done()
 	var wgc sync.WaitGroup
 	// counter for nbr of file ara copied
 
 	for _, ext := range dt.Exts {
 		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
-			dt.Count++
 			src := dt.DirIn + fm.Slash + entry.Name()                               // create a source path
 			dest := dt.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
 			wgc.Add(1)
-			go fm.CopyOrMove(src, dest, dt, &wgc)
+			go fm.CopyOrMove(src, dest, dt, &wgc, s)
 		}
 	}
+	//sho dialog when action is done
+
 }
 
-func (fm *FileModel) CopyOrMove(src, dst string, param *models.DataTemplate, wgc *sync.WaitGroup) {
+func (fm *FileModel) CopyOrMove(src, dst string, dt *models.DataTemplate, wgc *sync.WaitGroup, s chan *models.Stack) {
+
 	defer wgc.Done()
-	switch strings.ToLower(param.Action) {
+	switch strings.ToLower(dt.Action) {
 	case "copy":
+
 		src_file, err := os.Open(src)
-		fm.CheckErr(err)
+
+		if err != nil {
+			fmt.Println(err)
+			dt.Stack.Err = err.Error()
+			s <- dt.Stack
+		}
 		defer src_file.Close()
 
 		src_file_stat, err := src_file.Stat()
-		fm.CheckErr(err)
+
+		if err != nil {
+			fmt.Println(err)
+			dt.Stack.Err = err.Error()
+			s <- dt.Stack
+		}
 
 		if !src_file_stat.Mode().IsRegular() {
 			fmt.Errorf("%s is not a regular file", src)
 		}
+
 		dst_file, err := os.Create(dst)
-		fm.CheckErr(err)
+
+		if err != nil {
+			fmt.Println(err)
+			dt.Stack.Err = err.Error()
+			s <- dt.Stack
+		}
 		defer dst_file.Close()
 
 		_, err = io.Copy(dst_file, src_file)
-		fm.CheckErr(err)
+		if err != nil {
+			fmt.Println(err)
+			dt.Stack.Err = err.Error()
+			s <- dt.Stack
+		}
+
 	case "move":
-		fm.CheckErr(os.Rename(src, dst))
+
+		fmt.Println(dt.Stack.Fcount)
+
+		if err := os.Rename(src, dst); err != nil {
+			fmt.Println(err)
+			dt.Stack.Err = err.Error()
+			s <- dt.Stack
+		}
+
 	}
 
 	// delete the folder if is empty
-	for _, ext := range param.Exts {
-		path := param.DirOut + fm.Slash + ext + "-files"
+	for _, ext := range dt.Exts {
+		path := dt.DirOut + fm.Slash + ext + "-files"
 		empty, _ := IsEmpty(path)
 		if !empty {
 			os.Remove(path)
@@ -128,7 +161,6 @@ func (fm *FileModel) MakeOutDirs(exts []string, dirOut string, wg *sync.WaitGrou
 func (fm *FileModel) detectFileType(name string, dir string) string {
 
 	f, err := os.Open(dir + name)
-	fm.CheckErr(err)
 	defer f.Close()
 	// Only the first 512 bytes are used to sniff the content type.
 	buff := make([]byte, 512)

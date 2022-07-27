@@ -6,21 +6,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 )
 
 func (wa *WebApplication) Action(w http.ResponseWriter, r *http.Request) {
-	ccount := make(chan int)
+	s := make(chan *models.Stack)
 	if r.Method == "GET" {
 		fmt.Println("the server is ok")
 	} else {
 
-		time.Sleep(time.Second * 7000)
 		data, err := ioutil.ReadAll(r.Body)
 		wa.utils.CheckErr(err)
 		param := models.DataTemplate{}
 		wa.utils.CheckErr(json.Unmarshal(data, &param))
-		wa.fileManager.StartProcessing(&param, ccount)
+		wa.fileManager.StartProcessing(&param, s)
 		fmt.Println(param)
 		w.Write([]byte("data sent"))
 	}

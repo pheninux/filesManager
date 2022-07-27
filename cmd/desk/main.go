@@ -4,32 +4,31 @@ import (
 	"fileManager2/cmd/common"
 	"fileManager2/pkg/models"
 	"fileManager2/pkg/models/boImpl"
-	"github.com/andlabs/ui"
-	_ "github.com/andlabs/ui/winmanifest"
 	"runtime"
 )
-
-var win *ui.Window
 
 type DeskApplication struct {
 	fileManager  common.IFileManager
 	dataTemplate *models.DataTemplate
 	utils        common.Utils
+	os           string
 }
 
 func main() {
 
-	ccount := make(chan int)
+	s := make(chan *models.Stack)
 	//count = 0
 	//params := models.DataTemplate{Action: "copy", DirOut: "C:\\Users\\a706836\\go\\src\\filesManager2", DirIn: "C:\\Users\\a706836\\Downloads", Exts: []string{"pdf"}}
 	u := common.Utils{}
-	if runtime.GOOS == "windows" {
-		u.Slash = "\\"
-	} else {
-		u.Slash = "//"
-	}
-
 	da := &DeskApplication{fileManager: &boImpl.FileModel{Utils: &u}, utils: common.Utils{}}
+	switch runtime.GOOS {
+	case "windows":
+		u.Slash = "\\"
+		da.os = "windows"
+	case "android":
+		u.Slash = "//"
+		da.os = "android"
+	}
 
 	//currPath, err := os.Getwd() // get current path
 	//app.utils.CheckErr(err)
@@ -45,7 +44,7 @@ func main() {
 	//da.fileManager.StartProcessing(&params) // start processing traitements
 	//go counter()
 	//startGui(da)
-	startGuiFyne(da, ccount)
+	startGuiFyne(da, s)
 
 	// TODO REGLER LE SOUCIE SI UN DOSSIER EST VIDE FAUT LE SUPPRIMER
 	// todo logs ( numbre file , taille file , ect ...)

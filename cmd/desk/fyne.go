@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fileManager2/cmd/common"
 	"fileManager2/pkg/models"
 	"fmt"
 	"fyne.io/fyne/v2"
@@ -9,9 +10,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"strconv"
+	"os"
 	"strings"
-	"time"
 )
 
 type FyneGui struct {
@@ -20,7 +20,7 @@ type FyneGui struct {
 	action    *widget.Select
 	exts      []*widget.Check
 	otherExts *widget.Entry
-	log       *widget.Entry
+	log       *widget.TextGrid
 	oif       *widget.Button
 	oof       *widget.Button
 	btnGo     *widget.Button
@@ -31,14 +31,14 @@ var exts = []string{"pdf", "png", "txt", "jpeg", "csv", "doc", "docs"}
 var selectedExts []string
 var cbs []*widget.Check
 
-func startGuiFyne(da *DeskApplication, cc chan int) {
+func startGuiFyne(da *DeskApplication, s chan *models.Stack) {
 	//func main() {
 
 	app := app.New()
 	// for setting new theme
 	//app.Settings().SetTheme(&myTheme{})
 	w := app.NewWindow("Files Manager")
-	//w.SetFixedSize(true)
+	w.SetFixedSize(true)
 	w.CenterOnScreen()
 
 	/*********          ********************/
@@ -47,34 +47,48 @@ func startGuiFyne(da *DeskApplication, cc chan int) {
 	/************             *****************/
 	inDir := widget.NewEntry()
 	inDir.SetPlaceHolder("select the input folder")
-	inDir.Resize(fyne.NewSize(302, 40))
+	inDir.Resize(fyne.NewSize(270, 40))
 	inDir.Move(fyne.NewPos(0, 2))
 
 	/*************        ****************/
 	oif := widget.NewButton("...", func() {
 		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
-			inDir.SetText(uri.Path())
+			if uri == nil {
+				return
+			}
+			if da.os == "windows" {
+				inDir.SetText(uri.Path())
+			} else {
+				inDir.SetText(uri.String())
+			}
 		}, w)
 		d.Show()
 	}) // button ... select input folder
-	oif.Resize(fyne.NewSize(90, 40))
-	oif.Move(fyne.NewPos(310, 3))
+	oif.Resize(fyne.NewSize(60, 40))
+	oif.Move(fyne.NewPos(275, 3))
 
 	/****************        ******************/
 	outDir := widget.NewEntry()
 	outDir.SetPlaceHolder("select the output folder")
-	outDir.Resize(fyne.NewSize(302, 40))
+	outDir.Resize(fyne.NewSize(270, 40))
 	outDir.Move(fyne.NewPos(0, 2))
 
 	/******************       **********************/
 	oof := widget.NewButton("...", func() {
 		d := dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
-			outDir.SetText(uri.Path())
+			if uri == nil {
+				return
+			}
+			if da.os == "windows" {
+				outDir.SetText(uri.Path())
+			} else {
+				outDir.SetText(uri.String())
+			}
 		}, w)
 		d.Show()
 	}) // button ... select out folder
-	oof.Resize(fyne.NewSize(90, 40))
-	oof.Move(fyne.NewPos(310, 2))
+	oof.Resize(fyne.NewSize(60, 40))
+	oof.Move(fyne.NewPos(275, 2))
 
 	/***********             ********************/
 
@@ -94,26 +108,21 @@ func startGuiFyne(da *DeskApplication, cc chan int) {
 	/**************           ***************/
 	otherExt := widget.NewEntry()
 	otherExt.SetPlaceHolder("Other extentions for exmeples : msi;rar...")
-	otherExt.Resize(fyne.NewSize(396, 40))
+	otherExt.Resize(fyne.NewSize(350, 40))
 	otherExt.Move(fyne.NewPos(2, 2))
 
-	logs := widget.NewMultiLineEntry()
+	logs := widget.NewTextGrid()
 
 	/******* ******************/
 	btnCancel := widget.NewButton("Quit", func() {
-		app.Quit()
+		if da.os == "windows" {
+			app.Quit()
+		} else {
+			os.Exit(1)
+		}
+
 	})
 	btnGo := widget.NewButton("Go", func() {
-
-		// write logs
-		go func() {
-			for i := 1; i < 100; i++ {
-
-				f.log.Text += "\n " + strconv.Itoa(<-cc)
-				f.log.Refresh()
-				time.Sleep(time.Second * 3)
-			}
-		}()
 
 		// when press de button "go" first we collect de selected exts
 		selectedExts = []string{}
@@ -123,13 +132,50 @@ func startGuiFyne(da *DeskApplication, cc chan int) {
 			}
 		}
 
+		// write logs
+		go func(da *DeskApplication) {
+			select {
+			case r := <-s:
+				fmt.Println(r)
+				if r.Err != "" {
+					d := dialog.NewInformation("Error", fmt.Sprintf("%s", r.Err), w)
+					d.Show()
+				} else if r.Ffound != nil {
+					sb := strings.Builder{}
+					sb.WriteString("Files found \n\n")
+					for k, v := range r.Ffound {
+						sb.WriteString(fmt.Sprintf("[%s] : %v file(s) \n", k, v))
+					}
+					sb.WriteString("\nwant to confirm ?")
+					dc := dialog.NewConfirm("INFO", sb.String(), func(b bool) {
+						if b {
+							// start processing
+							da.fileManager.StartProcessing(wrapFyneFormEntry(f), s)
+						}
+					}, w)
+					dc.Show()
+
+				} else if r.Fcount == 0 {
+					tg := widget.NewTextGridFromString("DONE")
+					tg.SetStyleRange(0, 0, 0, 3, &widget.CustomTextGridStyle{})
+					d := dialog.NewInformation("INFO", tg.Text(), w)
+					d.Show()
+				}
+
+			}
+		}(da)
+
 		// check validate form entry
 		if !validateFyneEntry(f, w) {
 			return
 		}
 
-		// start processing
-		da.fileManager.StartProcessing(wrapFyneFormEntry(f), cc)
+		if err := da.utils.ValidateArgs(wrapFyneFormEntry(f), s); err != nil {
+			return
+		}
+
+		common.CountFileWithExtention(wrapFyneFormEntry(f), s)
+
 	})
 	btnGo.Importance = widget.HighImportance
 
@@ -152,17 +198,17 @@ func startGuiFyne(da *DeskApplication, cc chan int) {
 	/***************            **********************/
 	w.SetContent(container.NewVBox(
 		container.NewGridWrap(
-			fyne.NewSize(400, 40), container.NewWithoutLayout(inDir, oif)),
+			fyne.NewSize(335, 40), container.NewWithoutLayout(inDir, oif)),
 		container.NewGridWrap(
-			fyne.NewSize(400, 40), container.NewWithoutLayout(outDir, oof)),
+			fyne.NewSize(335, 40), container.NewWithoutLayout(outDir, oof)),
 		container.NewGridWrap(
-			fyne.NewSize(400, 40), action),
+			fyne.NewSize(335, 40), action),
 		container.NewGridWrap(
-			fyne.NewSize(400, 80), extContent),
+			fyne.NewSize(335, 80), extContent),
 		container.NewGridWrap(
-			fyne.NewSize(400, 40), otherExt),
+			fyne.NewSize(335, 40), otherExt),
 		container.NewGridWrap(
-			fyne.NewSize(400, 200), logs), btnContainer))
+			fyne.NewSize(335, 200), logs), btnContainer))
 	w.ShowAndRun()
 
 }
@@ -177,15 +223,16 @@ func removeFromSlice(s []string, r string) []string {
 }
 
 // wrap data from from  fyne entry to the templateData model
-func wrapFyneFormEntry(frm FyneGui) (dt *models.DataTemplate) {
-
-	dt = &models.DataTemplate{
+func wrapFyneFormEntry(frm FyneGui) *models.DataTemplate {
+	dt := &models.DataTemplate{
 		DirIn:  frm.in.Text,
 		DirOut: frm.out.Text,
 		Action: parseFyneSelectedCombo(frm.action),
 		Exts:   manageExts(frm),
+		Stack:  new(models.Stack),
 	}
-	fmt.Println(dt)
+
+	//fmt.Println(da.dataTemplate)
 	return dt
 }
 
@@ -199,6 +246,7 @@ func manageExts(frm FyneGui) []string {
 	if frm.otherExts.Text == "" {
 		return selectedExts
 	}
+	// else i return the sum of 2 slice ext and delete empty value
 	return deleteEmptySliceValue(append(strings.Split(frm.otherExts.Text, ";"), selectedExts...))
 }
 
