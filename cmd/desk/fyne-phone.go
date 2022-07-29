@@ -25,6 +25,7 @@ type FyneGui struct {
 	oof       *widget.Button
 	btnGo     *widget.Button
 	btnCnl    *widget.Button
+	Pb        *widget.ProgressBarInfinite
 }
 
 var exts = []string{"pdf", "png", "txt", "jpeg", "csv", "doc", "docs"}
@@ -111,8 +112,13 @@ func startGuiFyne(da *DeskApplication, s chan *models.Stack) {
 	otherExt.Resize(fyne.NewSize(350, 40))
 	otherExt.Move(fyne.NewPos(2, 2))
 
+	//************* logs widget **********************/
 	logs := widget.NewTextGrid()
 
+	/**************  progress bar*****************/
+
+	pb := widget.NewProgressBarInfinite()
+	pb.Hide()
 	/******* ******************/
 	btnCancel := widget.NewButton("Quit", func() {
 		if da.os == "windows" {
@@ -134,34 +140,40 @@ func startGuiFyne(da *DeskApplication, s chan *models.Stack) {
 
 		// write logs
 		go func(da *DeskApplication) {
-			select {
-			case r := <-s:
-				fmt.Println(r)
-				if r.Err != "" {
-					d := dialog.NewInformation("Error", fmt.Sprintf("%s", r.Err), w)
-					d.Show()
-				} else if r.Ffound != nil {
-					sb := strings.Builder{}
-					sb.WriteString("Files found \n\n")
-					for k, v := range r.Ffound {
-						sb.WriteString(fmt.Sprintf("[%s] : %v file(s) \n", k, v))
-					}
-					sb.WriteString("\nwant to confirm ?")
-					dc := dialog.NewConfirm("INFO", sb.String(), func(b bool) {
-						if b {
-							// start processing
-							da.fileManager.StartProcessing(wrapFyneFormEntry(f), s)
+			for {
+				select {
+				case r := <-s:
+					fmt.Println(r)
+					if r.Err != "" {
+						d := dialog.NewInformation("Error", fmt.Sprintf("%s", r.Err), w)
+						d.Show()
+					} else if r.Ffound != nil {
+						sb := strings.Builder{}
+						sb.WriteString("Files found \n\n")
+						for k, v := range r.Ffound {
+							sb.WriteString(fmt.Sprintf("[%s] : %v file(s) \n", k, v))
 						}
-					}, w)
-					dc.Show()
+						sb.WriteString("\nwant to confirm ?")
+						dc := dialog.NewConfirm("INFO", sb.String(), func(b bool) {
+							if b {
+								// start processing
+								///***** make progress bar visible ***************/
+								f.Pb.Show()
+								f.btnGo.Disable()
+								go da.fileManager.StartProcessing(wrapFyneFormEntry(f), s)
 
-				} else if r.Fcount == 0 {
-					tg := widget.NewTextGridFromString("DONE")
-					tg.SetStyleRange(0, 0, 0, 3, &widget.CustomTextGridStyle{})
-					d := dialog.NewInformation("INFO", tg.Text(), w)
-					d.Show()
+							}
+						}, w)
+						dc.Show()
+
+					} else if r.Done {
+
+						d := dialog.NewInformation("INFO", "DONE", w)
+						d.Show()
+						f.btnGo.Enable()
+						f.Pb.Hide()
+					}
 				}
-
 			}
 		}(da)
 
@@ -190,6 +202,7 @@ func startGuiFyne(da *DeskApplication, s chan *models.Stack) {
 		oof:       oof,
 		btnGo:     btnGo,
 		btnCnl:    btnCancel,
+		Pb:        pb,
 	}
 
 	/*************** *************************/
@@ -208,7 +221,8 @@ func startGuiFyne(da *DeskApplication, s chan *models.Stack) {
 		container.NewGridWrap(
 			fyne.NewSize(335, 40), otherExt),
 		container.NewGridWrap(
-			fyne.NewSize(335, 200), logs), btnContainer))
+			fyne.NewSize(335, 200), logs), btnContainer,
+		container.NewGridWrap(fyne.NewSize(335, 10), pb)))
 	w.ShowAndRun()
 
 }

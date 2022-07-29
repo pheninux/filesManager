@@ -13,4 +13,5 @@ type Stack struct {
 	Err     string         // error handled
 	Pattern []string       // urls path
 	Fcount  int            // all files count
+	Done    bool           // if actions are done
 }

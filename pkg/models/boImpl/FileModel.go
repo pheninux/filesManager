@@ -26,12 +26,20 @@ func (fm *FileModel) StartProcessing(dt *models.DataTemplate, s chan *models.Sta
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	var wg2 sync.WaitGroup
+	wg.Add(1)
 
 	go fm.MakeOutDirs(dt.Exts, dt.DirOut, &wg) // create directories for different extentions of files
-	go fm.Process(fi, dt, &wg, s)
-
 	wg.Wait()
+	fm.Process(fi, dt, &wg2, s)
+
+	wg2.Wait()
+
+	fmt.Println("done")
+	dt.Stack.Done = true
+
+	fmt.Println(dt.Stack)
+	s <- dt.Stack
 
 }
 
@@ -53,49 +61,53 @@ func IsEmpty(path string) (bool, error) {
 }
 
 func (fm *FileModel) Process(fi []os.FileInfo, dt *models.DataTemplate, wg *sync.WaitGroup, s chan *models.Stack) {
-	var wgp sync.WaitGroup
-	defer wg.Done()
+	//var wgp sync.WaitGroup
+	//defer wg.Done()
 
 	for _, entry := range fi {
 		if entry.IsDir() {
 			continue
 		}
-		wgp.Add(1)
-		go fm.CheckExtAndCopy(entry, dt, &wgp, s)
+		//wgp.Add(1)
+		fm.CheckExtAndCopy(entry, dt, wg, s)
 		//fmt.Println(" ", entry.Name(), entry.IsDir(), filepath.Ext(entry.Name()))
 	}
-	wgp.Wait()
+
+	//wgp.Wait()
 }
 
 /** check every extentions and copy file in the appropriate folder**/
 func (fm *FileModel) CheckExtAndCopy(entry os.FileInfo, dt *models.DataTemplate, wgp *sync.WaitGroup, s chan *models.Stack) {
 
-	defer wgp.Done()
-	var wgc sync.WaitGroup
+	//defer wgp.Done()
+	//var wgc sync.WaitGroup
 	// counter for nbr of file ara copied
 
 	for _, ext := range dt.Exts {
 		if filepath.Ext(entry.Name()) == "."+ext { // if the entry extention is equal to the given extention args
 			src := dt.DirIn + fm.Slash + entry.Name()                               // create a source path
 			dest := dt.DirOut + fm.Slash + ext + "-files" + fm.Slash + entry.Name() // create a distination path
-			wgc.Add(1)
-			go fm.CopyOrMove(src, dest, dt, &wgc, s)
+			//wgc.Add(1)
+			wgp.Add(1)
+			go fm.CopyOrMove(src, dest, dt, wgp, s)
 		}
 	}
-	//sho dialog when action is done
+
+	//wgc.Wait()
 
 }
 
-func (fm *FileModel) CopyOrMove(src, dst string, dt *models.DataTemplate, wgc *sync.WaitGroup, s chan *models.Stack) {
+func (fm *FileModel) CopyOrMove(src, dst string, dt *models.DataTemplate, wgp *sync.WaitGroup, s chan *models.Stack) {
 
-	defer wgc.Done()
+	defer wgp.Done()
 	switch strings.ToLower(dt.Action) {
 	case "copy":
+
+		/********** 1 er solution *********/
 
 		src_file, err := os.Open(src)
 
 		if err != nil {
-			fmt.Println(err)
 			dt.Stack.Err = err.Error()
 			s <- dt.Stack
 		}
@@ -104,19 +116,18 @@ func (fm *FileModel) CopyOrMove(src, dst string, dt *models.DataTemplate, wgc *s
 		src_file_stat, err := src_file.Stat()
 
 		if err != nil {
-			fmt.Println(err)
 			dt.Stack.Err = err.Error()
 			s <- dt.Stack
 		}
 
 		if !src_file_stat.Mode().IsRegular() {
-			fmt.Errorf("%s is not a regular file", src)
+			dt.Stack.Err = fmt.Errorf("%s is not a regular file", src).Error()
+			s <- dt.Stack
 		}
 
 		dst_file, err := os.Create(dst)
 
 		if err != nil {
-			fmt.Println(err)
 			dt.Stack.Err = err.Error()
 			s <- dt.Stack
 		}
@@ -124,17 +135,27 @@ func (fm *FileModel) CopyOrMove(src, dst string, dt *models.DataTemplate, wgc *s
 
 		_, err = io.Copy(dst_file, src_file)
 		if err != nil {
-			fmt.Println(err)
 			dt.Stack.Err = err.Error()
 			s <- dt.Stack
 		}
 
+		/********** 2 eme solution mais les benchmarck c'est pareil avec la premiere******/
+		//input, err := ioutil.ReadFile(src)
+		//if err != nil {
+		//	fmt.Println(err)
+		//	return
+		//}
+		//
+		//err = ioutil.WriteFile(dst, input, 0644)
+		//if err != nil {
+		//	fmt.Println("Error creating", dst)
+		//	fmt.Println(err)
+		//	return
+		//}
+
 	case "move":
 
-		fmt.Println(dt.Stack.Fcount)
-
 		if err := os.Rename(src, dst); err != nil {
-			fmt.Println(err)
 			dt.Stack.Err = err.Error()
 			s <- dt.Stack
 		}
